@@ -5,14 +5,25 @@ import openai
 from dotenv import load_dotenv
 
 # ====== بارگذاری فایل .env ======
-load_dotenv()  # فایل .env کنار bot.py باید باشه
+load_dotenv()  # فقط برای اجرای لوکال – روی Railway عملاً بی‌اثر است
 
 # ====== تنظیمات ======
 BALE_TOKEN = os.getenv("BALE_TOKEN")
-BALE_API = f"https://tapi.bale.ai/bot{BALE_TOKEN}"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+BALE_API = f"https://tapi.bale.ai/bot{BALE_TOKEN}"
+
 openai.api_key = OPENAI_API_KEY
+
+
+# ====== 🔴 تست حیاتی ENV (دقیقاً اینجا باید باشد) ======
+print("====== ENV CHECK ======")
+print("BALE_TOKEN:", BALE_TOKEN)
+print("OPENAI_API_KEY:", "SET" if OPENAI_API_KEY else None)
+print("BALE_API:", BALE_API)
+print("=======================")
+# ===============================================
+
 
 # ====== دریافت پیام‌ها ======
 def get_updates(offset=None):
@@ -28,6 +39,7 @@ def get_updates(offset=None):
     except Exception as e:
         print("Error getting updates:", e)
         return None
+
 
 # ====== ارسال پیام ======
 def send_message(chat_id, text):
@@ -45,6 +57,7 @@ def send_message(chat_id, text):
         print("Error sending message:", e)
         return None
 
+
 # ====== گرفتن پاسخ از OpenAI ======
 def get_openai_response(prompt):
     try:
@@ -53,6 +66,7 @@ def get_openai_response(prompt):
             input=prompt
         )
         print("Debug OpenAI:", response)
+
         if hasattr(response, "output_text"):
             return response.output_text
         elif isinstance(response, dict) and "output_text" in response:
@@ -63,25 +77,31 @@ def get_openai_response(prompt):
         print("Error from OpenAI:", e)
         return "❌ خطای OpenAI"
 
+
 # ====== حلقه اصلی ======
 def main():
     print("🤖 ربات آماده و اجراست...")
     last_update_id = None
+
     while True:
         updates = get_updates(offset=(last_update_id + 1) if last_update_id else None)
+
         if updates and updates.get("ok") and updates.get("result"):
             for u in updates["result"]:
                 last_update_id = u["update_id"]
                 m = u.get("message")
+
                 if not m or "text" not in m:
                     continue
+
                 chat_id = m["chat"]["id"]
                 text = m["text"]
 
-                # پاسخ OpenAI
                 reply = get_openai_response(text)
                 send_message(chat_id, reply)
+
         time.sleep(1)
+
 
 if __name__ == "__main__":
     main()
